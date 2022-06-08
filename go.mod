@@ -1,3 +1,3 @@
 module github.com/ywanbing/lock
 
-go 1.14
+go 1.18
