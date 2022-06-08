@@ -24,7 +24,7 @@ type mutex struct {
 	state int32
 
 	// holder information if you set
-	holdInfo interface{}
+	holdInfo string
 
 	// record how long the lock was held
 	lockTime time.Time
@@ -35,13 +35,13 @@ func NewMutex(log Logger) *mutex {
 	return &mutex{
 		mux:      new(sync.Mutex),
 		state:    0,
-		holdInfo: nil,
+		holdInfo: "",
 		log:      log,
 	}
 }
 
 // Lock blocking mode, wait until lock
-func (m *mutex) Lock(holdInfo interface{}) {
+func (m *mutex) Lock(holdInfo string) {
 	m.mux.Lock()
 	if atomic.CompareAndSwapInt32(&m.state, mutexUnLocked, mutexLocked) {
 		m.holdInfo = holdInfo
@@ -57,10 +57,10 @@ func (m *mutex) Lock(holdInfo interface{}) {
 func (m *mutex) Unlock() {
 	if atomic.CompareAndSwapInt32(&m.state, mutexLocked, mutexUnLocked) {
 		go func(holdInfo interface{}, oldTime time.Time) {
-			m.log.Infof("%s the time the lock is held is %v Milliseconds", holdInfo, time.Since(oldTime).Milliseconds())
+			m.log.Infof("%s the time the lock is held is %s Milliseconds", holdInfo, time.Since(oldTime).Milliseconds())
 		}(m.holdInfo, m.lockTime)
-		
-		m.holdInfo = nil
+
+		m.holdInfo = ""
 		m.mux.Unlock()
 		return
 	}
@@ -69,12 +69,12 @@ func (m *mutex) Unlock() {
 }
 
 // GetHoldInfo This information is only available when the lock is held
-func (m mutex) GetHoldInfo() interface{} {
+func (m mutex) GetHoldInfo() string {
 	return m.holdInfo
 }
 
 // LockWithTimeOut acquire lock with timeout
-func (m *mutex) LockWithTimeOut(holdInfo interface{}, timeOut time.Duration) bool {
+func (m *mutex) LockWithTimeOut(holdInfo string, timeOut time.Duration) bool {
 	if timeOut <= 0 {
 		m.Lock(holdInfo)
 		return true
@@ -102,7 +102,7 @@ func (m *mutex) LockWithTimeOut(holdInfo interface{}, timeOut time.Duration) boo
 	}
 }
 
-func (m *mutex) loopAcquireLock(holdInfo interface{}, lockChan chan struct{}, quitChan chan struct{}) {
+func (m *mutex) loopAcquireLock(holdInfo string, lockChan chan struct{}, quitChan chan struct{}) {
 	ticker := time.NewTicker(tryLockTime)
 	defer ticker.Stop()
 
@@ -122,7 +122,7 @@ func (m *mutex) loopAcquireLock(holdInfo interface{}, lockChan chan struct{}, qu
 }
 
 // TryLock tries to lock m and reports whether it succeeded.
-func (m *mutex) TryLock(holdInfo interface{}) bool {
+func (m *mutex) TryLock(holdInfo string) bool {
 	// fail fast
 	if m.state == mutexLocked {
 		return false
