@@ -2,25 +2,10 @@ package lock
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"testing"
 	"time"
 )
-
-type Log struct {
-	*log.Logger
-}
-
-func (l *Log) Infof(format string, args ...interface{}) {
-	l.Printf(format, args...)
-}
-
-func NewLog() Logger {
-	return &Log{
-		Logger: log.Default(),
-	}
-}
 
 func TestMutex_Lock(t *testing.T) {
 	mu := NewMutex(NewLog())

@@ -2,26 +2,15 @@ package lock
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 const (
-	mutexUnLocked int32 = iota
-	mutexLocked
-
 	tryLockTime = 1 * time.Millisecond
 )
 
-type Logger interface {
-	Infof(format string, v ...interface{})
-}
-
 type mutex struct {
 	mux *sync.Mutex
-
-	// lock status
-	state int32
 
 	// holder information if you set
 	holdInfo string
@@ -31,10 +20,15 @@ type mutex struct {
 	log      Logger
 }
 
+// NewDefMutex create default mutex
+func NewDefMutex() *mutex {
+	return NewMutex(NewLog())
+}
+
+// NewMutex create mutex with logger
 func NewMutex(log Logger) *mutex {
 	return &mutex{
 		mux:      new(sync.Mutex),
-		state:    0,
 		holdInfo: "",
 		log:      log,
 	}
@@ -43,29 +37,19 @@ func NewMutex(log Logger) *mutex {
 // Lock blocking mode, wait until lock
 func (m *mutex) Lock(holdInfo string) {
 	m.mux.Lock()
-	if atomic.CompareAndSwapInt32(&m.state, mutexUnLocked, mutexLocked) {
-		m.holdInfo = holdInfo
-		m.lockTime = time.Now()
-		return
-	}
-
-	panic("lock state err: the original state should be mutexUnLocked")
+	m.holdInfo = holdInfo
+	m.lockTime = time.Now()
 }
 
 // Unlock unlocks m.
 // It is a run-time error if m is not locked on entry to Unlock.
 func (m *mutex) Unlock() {
-	if atomic.CompareAndSwapInt32(&m.state, mutexLocked, mutexUnLocked) {
-		go func(holdInfo interface{}, oldTime time.Time) {
-			m.log.Infof("%s the time the lock is held is %s Milliseconds", holdInfo, time.Since(oldTime).Milliseconds())
-		}(m.holdInfo, m.lockTime)
+	go func(holdInfo interface{}, oldTime time.Time) {
+		m.log.PrintLockUsageTime("%s the time the lock is held is %d Milliseconds", holdInfo, time.Since(oldTime).Milliseconds())
+	}(m.holdInfo, m.lockTime)
 
-		m.holdInfo = ""
-		m.mux.Unlock()
-		return
-	}
-
-	panic("lock state err: the original state should be mutexLocked")
+	m.holdInfo = ""
+	m.mux.Unlock()
 }
 
 // GetHoldInfo This information is only available when the lock is held
@@ -123,20 +107,16 @@ func (m *mutex) loopAcquireLock(holdInfo string, lockChan chan struct{}, quitCha
 
 // TryLock tries to lock m and reports whether it succeeded.
 func (m *mutex) TryLock(holdInfo string) bool {
-	// fail fast
-	if m.state == mutexLocked {
-		return false
-	}
-
 	if !m.mux.TryLock() {
 		return false
 	}
 
-	if atomic.CompareAndSwapInt32(&m.state, mutexUnLocked, mutexLocked) {
-		m.holdInfo = holdInfo
-		m.lockTime = time.Now()
-		return true
-	}
+	m.holdInfo = holdInfo
+	m.lockTime = time.Now()
+	return true
+}
 
-	panic("lock state err: the original state should be mutexUnLocked")
+// SetLogger set up a log component
+func (m *mutex) SetLogger(log Logger) {
+	m.log = log
 }
