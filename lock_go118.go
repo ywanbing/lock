@@ -1,16 +1,15 @@
 //go:build go1.18
+// +build go1.18
+
 package lock
 
 import (
+	"log"
 	"sync"
 	"time"
 )
 
-const (
-	tryLockTime = 1 * time.Millisecond
-)
-
-type mutex struct {
+type mutexGo18 struct {
 	mux *sync.Mutex
 
 	// holder information if you set
@@ -21,22 +20,23 @@ type mutex struct {
 	log      Logger
 }
 
-// NewDefMutex create default mutex
-func NewDefMutex() *mutex {
-	return NewMutex(NewLog())
-}
-
-// NewMutex create mutex with logger
-func NewMutex(log Logger) *mutex {
-	return &mutex{
+// NewMutex create mutexGo18 with logger
+func NewMutex(log Logger) Locker {
+	return &mutexGo18{
 		mux:      new(sync.Mutex),
 		holdInfo: "",
 		log:      log,
 	}
 }
 
+func NewLog() Logger {
+	return &Log{
+		Logger: log.Default(),
+	}
+}
+
 // Lock blocking mode, wait until lock
-func (m *mutex) Lock(holdInfo string) {
+func (m *mutexGo18) Lock(holdInfo string) {
 	m.mux.Lock()
 	m.holdInfo = holdInfo
 	m.lockTime = time.Now()
@@ -44,7 +44,7 @@ func (m *mutex) Lock(holdInfo string) {
 
 // Unlock unlocks m.
 // It is a run-time error if m is not locked on entry to Unlock.
-func (m *mutex) Unlock() {
+func (m *mutexGo18) Unlock() {
 	go func(holdInfo interface{}, oldTime time.Time) {
 		m.log.PrintLockUsageTime("%s the time the lock is held is %d Milliseconds", holdInfo, time.Since(oldTime).Milliseconds())
 	}(m.holdInfo, m.lockTime)
@@ -54,12 +54,12 @@ func (m *mutex) Unlock() {
 }
 
 // GetHoldInfo This information is only available when the lock is held
-func (m mutex) GetHoldInfo() string {
+func (m mutexGo18) GetHoldInfo() string {
 	return m.holdInfo
 }
 
 // LockWithTimeOut acquire lock with timeout
-func (m *mutex) LockWithTimeOut(holdInfo string, timeOut time.Duration) bool {
+func (m *mutexGo18) LockWithTimeOut(holdInfo string, timeOut time.Duration) bool {
 	if timeOut <= 0 {
 		m.Lock(holdInfo)
 		return true
@@ -87,7 +87,7 @@ func (m *mutex) LockWithTimeOut(holdInfo string, timeOut time.Duration) bool {
 	}
 }
 
-func (m *mutex) loopAcquireLock(holdInfo string, lockChan chan struct{}, quitChan chan struct{}) {
+func (m *mutexGo18) loopAcquireLock(holdInfo string, lockChan chan struct{}, quitChan chan struct{}) {
 	ticker := time.NewTicker(tryLockTime)
 	defer ticker.Stop()
 
@@ -107,7 +107,7 @@ func (m *mutex) loopAcquireLock(holdInfo string, lockChan chan struct{}, quitCha
 }
 
 // TryLock tries to lock m and reports whether it succeeded.
-func (m *mutex) TryLock(holdInfo string) bool {
+func (m *mutexGo18) TryLock(holdInfo string) bool {
 	if !m.mux.TryLock() {
 		return false
 	}
@@ -118,6 +118,6 @@ func (m *mutex) TryLock(holdInfo string) bool {
 }
 
 // SetLogger set up a log component
-func (m *mutex) SetLogger(log Logger) {
+func (m *mutexGo18) SetLogger(log Logger) {
 	m.log = log
 }
