@@ -3,9 +3,13 @@
 
 Internally records who is holding the lock, and prints the time when the lock is used when unlocking.
 ## Feature  特性
-使用`sync.mutex`封装，带有获取锁超时的额外功能。
+go.1.18 使用`sync.mutex`封装，带有获取锁超时的额外功能。
 
-Wrapped with `sync.mutex`, with additional functionality for acquiring lock timeouts.
+go.1.18 Wrapped with `sync.mutex`, with additional functionality for acquiring lock timeouts.
+
+小于go1.18 的版本采用原子操作进行封装，对于锁的使用应该更快，当前是在通常情况下。
+
+Versions smaller than go1.18 are encapsulated with atomic operations, and the use of locks should be faster, which is currently the usual case.
 
 ## HowToUse 使用方式
 
