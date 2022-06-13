@@ -15,9 +15,3 @@ type Log struct {
 func (l *Log) PrintLockUsageTime(format string, args ...interface{}) {
 	l.Printf(format, args...)
 }
-
-func NewLog() Logger {
-	return &Log{
-		Logger: log.Default(),
-	}
-}

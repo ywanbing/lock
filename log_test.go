@@ -1,13 +1,12 @@
 package lock
 
 import (
-	"log"
 	"testing"
 )
 
 func TestLog_PrintLockUsageTime(t *testing.T) {
 	type fields struct {
-		Logger *log.Logger
+		Logger Logger
 	}
 	type args struct {
 		format string
@@ -21,7 +20,7 @@ func TestLog_PrintLockUsageTime(t *testing.T) {
 		{
 			name: "print1",
 			fields: fields{
-				Logger: log.Default(),
+				Logger: NewLog(),
 			},
 			args: args{
 				format: "name:%s use %d ",
@@ -31,7 +30,7 @@ func TestLog_PrintLockUsageTime(t *testing.T) {
 		{
 			name: "print2",
 			fields: fields{
-				Logger: log.Default(),
+				Logger: NewLog(),
 			},
 			args: args{
 				format: "name:%s use %d ",
@@ -41,7 +40,7 @@ func TestLog_PrintLockUsageTime(t *testing.T) {
 		{
 			name: "print3",
 			fields: fields{
-				Logger: log.Default(),
+				Logger: NewLog(),
 			},
 			args: args{
 				format: "name:%s use %d ",
@@ -51,9 +50,7 @@ func TestLog_PrintLockUsageTime(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := &Log{
-				Logger: tt.fields.Logger,
-			}
+			l := tt.fields.Logger
 			l.PrintLockUsageTime(tt.args.format, tt.args.args...)
 		})
 	}
